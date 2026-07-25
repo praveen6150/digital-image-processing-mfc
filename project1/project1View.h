@@ -120,15 +120,15 @@ public:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void ApplyLiveHSIPreview(int hDeg, int sSat, int iInt, CImage* pSmallImg);
 	afx_msg void OnPointprocessSolarization();
-	void ApplyLiveSolarization(int threshold);
-	void ApplyLivePosterization(int levels);
-	void ApplyLiveBitPlane(int bitPlane);
+	afx_msg void ApplyLiveSolarization(int threshold);
+	afx_msg void ApplyLivePosterization(int levels);
+	afx_msg void ApplyLiveBitPlane(int bitPlane);
 	afx_msg void OnPointprocessPosterization();
 	afx_msg void OnPointprocessBitplane();
 	afx_msg void OnPointprocessContraststretch();
-	void ApplyLiveContrastStretch(int minVal, int maxVal);
+	afx_msg void ApplyLiveContrastStretch(int minVal, int maxVal);
 	afx_msg void OnPointprocessColorbalance();
-	void ApplyLiveColorBalance(int deltaR, int deltaG, int deltaB);
+	afx_msg void ApplyLiveColorBalance(int deltaR, int deltaG, int deltaB);
 	afx_msg void OnNeighborhoodprocessingAverageblur();
 	afx_msg void OnNeighborhoodprocessingGaussianblur();
 	afx_msg void OnNeighborhoodprocessingLowpassfilter();
@@ -234,6 +234,8 @@ public:
 	afx_msg void OnPointprocessBleachbypass();
 	afx_msg void ApplyLiveClarity(int amount);
 	afx_msg void OnSpatialdomainfilteringClarity();
+	afx_msg void ApplyLiveSplitTone(COLORREF shadowTint, COLORREF highlightTint, int balance, int intensityPercent);
+	afx_msg void OnPointprocessSplittone();
 };
 
 #ifndef _DEBUG  // debug version in project1View.cpp

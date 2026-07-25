@@ -238,6 +238,7 @@
     <ClInclude Include="CSepiaToneDlg.h" />
     <ClInclude Include="CSigmoidContrastDlg.h" />
     <ClInclude Include="CSolarizationDlg.h" />
+    <ClInclude Include="CSplitToneDlg.h" />
     <ClInclude Include="CVibranceDlg.h" />
     <ClInclude Include="CVignetteDlg.h" />
     <ClInclude Include="CWhiteBalanceDlg.h" />
@@ -291,6 +292,7 @@
     <ClCompile Include="CSepiaToneDlg.cpp" />
     <ClCompile Include="CSigmoidContrastDlg.cpp" />
     <ClCompile Include="CSolarizationDlg.cpp" />
+    <ClCompile Include="CSplitToneDlg.cpp" />
     <ClCompile Include="CVibranceDlg.cpp" />
     <ClCompile Include="CVignetteDlg.cpp" />
     <ClCompile Include="CWhiteBalanceDlg.cpp" />

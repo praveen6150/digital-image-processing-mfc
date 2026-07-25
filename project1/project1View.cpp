@@ -60,6 +60,8 @@
 #include "CColorPopDlg.h"
 #include "CBleachBypassDlg.h"
 #include "CClarityDlg.h"
+#include "CSplitToneDlg.h"
+
 
 IMPLEMENT_DYNCREATE(Cproject1View, CScrollView)
 
@@ -154,6 +156,7 @@ BEGIN_MESSAGE_MAP(Cproject1View, CScrollView)
 	ON_COMMAND(ID_POINTPROCESS_COLORPOP, &Cproject1View::OnPointprocessColorpop)
 	ON_COMMAND(ID_POINTPROCESS_BLEACHBYPASS, &Cproject1View::OnPointprocessBleachbypass)
 	ON_COMMAND(ID_SPATIALDOMAINFILTERING_CLARITY, &Cproject1View::OnSpatialdomainfilteringClarity)
+	ON_COMMAND(ID_POINTPROCESS_SPLITTONE, &Cproject1View::OnPointprocessSplittone)
 END_MESSAGE_MAP()
 
 
@@ -8386,6 +8389,100 @@ void Cproject1View::OnSpatialdomainfilteringClarity()
 	if (!pDoc || pDoc->m_imageOriginal.IsNull() || pDoc->m_image.IsNull()) return;
 
 	CClarityDlg dlg;
+	dlg.SetTargetView(this);
+
+	if (dlg.DoModal() != IDOK)
+		return; // OnCancel already reverted m_image
+
+	int pitch = pDoc->m_image.GetPitch();
+	int height = pDoc->m_image.GetHeight();
+	BYTE* pSrcBits = (BYTE*)pDoc->m_image.GetBits();
+	BYTE* pDstBits = (BYTE*)pDoc->m_imageOriginal.GetBits();
+
+	if (pitch < 0) {
+		memcpy(pDstBits + (pitch * (height - 1)), pSrcBits + (pitch * (height - 1)), abs(pitch) * height);
+	}
+	else {
+		memcpy(pDstBits, pSrcBits, pitch * height);
+	}
+
+	Invalidate(FALSE);
+	UpdateWindow();
+}
+
+
+void Cproject1View::ApplyLiveSplitTone(COLORREF shadowTint, COLORREF highlightTint, int balance, int intensityPercent)
+{
+	Cproject1Doc* pDoc = GetDocument();
+	if (!pDoc || pDoc->m_image.IsNull() || pDoc->m_imageOriginal.IsNull()) return;
+
+	// Restore pristine original first
+	int pitch = pDoc->m_imageOriginal.GetPitch();
+	int height = pDoc->m_imageOriginal.GetHeight();
+	BYTE* pSrcBits = (BYTE*)pDoc->m_imageOriginal.GetBits();
+	BYTE* pDstBits = (BYTE*)pDoc->m_image.GetBits();
+
+	if (pitch < 0) {
+		memcpy(pDstBits + (pitch * (height - 1)), pSrcBits + (pitch * (height - 1)), abs(pitch) * height);
+	}
+	else {
+		memcpy(pDstBits, pSrcBits, pitch * height);
+	}
+
+	int width = pDoc->m_image.GetWidth();
+	int bpp = pDoc->m_image.GetBPP();
+	if (bpp < 24) return;
+
+	int bytesPerPixel = bpp / 8;
+	int dstPitch = pDoc->m_image.GetPitch();
+	BYTE* pBits = (BYTE*)pDoc->m_image.GetBits();
+
+	int shadowR = GetRValue(shadowTint), shadowG = GetGValue(shadowTint), shadowB = GetBValue(shadowTint);
+	int highR = GetRValue(highlightTint), highG = GetGValue(highlightTint), highB = GetBValue(highlightTint);
+
+	double intensity = intensityPercent / 100.0;
+	// Balance shifts the midpoint of the shadow/highlight blend — -100 pushes the crossover
+	// point darker (more of the image treated as "highlight"), +100 pushes it brighter
+	double balanceOffset = (balance / 100.0) * 64.0;
+
+	for (int y = 0; y < height; y++)
+	{
+		BYTE* pRow = pBits + (y * dstPitch);
+		for (int x = 0; x < width; x++)
+		{
+			BYTE* pPixel = pRow + (x * bytesPerPixel);
+
+			BYTE b = pPixel[0], g = pPixel[1], r = pPixel[2];
+			double lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+			// Shift the crossover point by balance, then compute shadow/highlight weights
+			double adjustedLum = lum - balanceOffset;
+			double highlightWeight = adjustedLum / 255.0;
+			highlightWeight = max(0.0, min(1.0, highlightWeight));
+			double shadowWeight = 1.0 - highlightWeight;
+
+			// Blend original color toward shadow tint (weighted by shadowWeight)
+			// and toward highlight tint (weighted by highlightWeight), each scaled by intensity
+			double newR = r + (shadowR - r) * shadowWeight * intensity + (highR - r) * highlightWeight * intensity;
+			double newG = g + (shadowG - g) * shadowWeight * intensity + (highG - g) * highlightWeight * intensity;
+			double newB = b + (shadowB - b) * shadowWeight * intensity + (highB - b) * highlightWeight * intensity;
+
+			pPixel[0] = (BYTE)max(0.0, min(255.0, newB + 0.5));
+			pPixel[1] = (BYTE)max(0.0, min(255.0, newG + 0.5));
+			pPixel[2] = (BYTE)max(0.0, min(255.0, newR + 0.5));
+		}
+	}
+
+	Invalidate(FALSE);
+	UpdateWindow();
+}
+
+void Cproject1View::OnPointprocessSplittone()
+{
+	Cproject1Doc* pDoc = GetDocument();
+	if (!pDoc || pDoc->m_imageOriginal.IsNull() || pDoc->m_image.IsNull()) return;
+
+	CSplitToneDlg dlg;
 	dlg.SetTargetView(this);
 
 	if (dlg.DoModal() != IDOK)
