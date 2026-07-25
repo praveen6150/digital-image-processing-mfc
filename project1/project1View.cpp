@@ -1436,7 +1436,6 @@ void Cproject1View::ApplyLiveBitPlane(int bitPlane)
 	if (bitPlane > 7) bitPlane = 7;
 
 	Cproject1Doc* pDoc = GetDocument();
-	ASSERT_VALID(pDoc);
 	if (!pDoc || pDoc->m_imageOriginal.IsNull() || pDoc->m_image.IsNull()) return;
 
 	BYTE* pSrcBits = (BYTE*)pDoc->m_imageOriginal.GetBits();
@@ -1446,10 +1445,10 @@ void Cproject1View::ApplyLiveBitPlane(int bitPlane)
 	int pitch = pDoc->m_imageOriginal.GetPitch();
 	int bytesPerPixel = pDoc->m_imageOriginal.GetBPP() / 8;
 
-	// Create a binary mask for the specific bit plane (e.g., 1 << 7 is 10000000 binary)
+	// Mask for the bit position (e.g., bit 7 = 10000000)
 	BYTE mask = (1 << bitPlane);
 
-	// Precalculate LUT: if bit matches mask, display max intensity (255), otherwise dark (0)
+	// Precalculate LUT for speed: 0 stays 0, non-zero becomes 255
 	BYTE lut[256];
 	for (int i = 0; i < 256; i++)
 	{
@@ -1466,10 +1465,10 @@ void Cproject1View::ApplyLiveBitPlane(int bitPlane)
 			BYTE* pSrcPixel = pSrcRow + (x * bytesPerPixel);
 			BYTE* pDstPixel = pDstRow + (x * bytesPerPixel);
 
-			// Isolate the bit layer for each color channel
-			pDstPixel[0] = lut[pSrcPixel[0]]; // Blue
-			pDstPixel[1] = lut[pSrcPixel[1]]; // Green
-			pDstPixel[2] = lut[pSrcPixel[2]]; // Red
+			// Apply bit mask independently to Blue, Green, and Red
+			pDstPixel[0] = lut[pSrcPixel[0]]; // Blue channel bit plane
+			pDstPixel[1] = lut[pSrcPixel[1]]; // Green channel bit plane
+			pDstPixel[2] = lut[pSrcPixel[2]]; // Red channel bit plane
 		}
 	}
 
@@ -1477,14 +1476,13 @@ void Cproject1View::ApplyLiveBitPlane(int bitPlane)
 	UpdateWindow();
 }
 
-
 void Cproject1View::OnPointprocessBitplane()
 {
 	Cproject1Doc* pDoc = GetDocument();
-	if (!pDoc || pDoc->m_imageOriginal.IsNull()) return;
+	if (!pDoc || pDoc->m_imageOriginal.IsNull() || pDoc->m_image.IsNull()) return;
 
 	CBitPlaneDlg dlg;
-	dlg.m_nBitPlane = 7; // Default to the highest structural layer
+	dlg.m_nBitPlane = 7; // Default to MSB (Bit 7)
 
 	if (dlg.DoModal() == IDOK)
 	{
@@ -1492,17 +1490,20 @@ void Cproject1View::OnPointprocessBitplane()
 	}
 	else
 	{
-		// Cancel fallback: Safe row-by-row image copy back to original state
+		// Safe restore on Cancel for both top-down and bottom-up images
+		int pitch = pDoc->m_imageOriginal.GetPitch();
+		int height = pDoc->m_imageOriginal.GetHeight();
 		BYTE* pSrcBits = (BYTE*)pDoc->m_imageOriginal.GetBits();
 		BYTE* pDstBits = (BYTE*)pDoc->m_image.GetBits();
-		int width = pDoc->m_imageOriginal.GetWidth();
-		int height = pDoc->m_imageOriginal.GetHeight();
-		int pitch = pDoc->m_imageOriginal.GetPitch();
-		int bytesPerPixel = pDoc->m_imageOriginal.GetBPP() / 8;
+		size_t totalBytes = (size_t)abs(pitch) * height;
 
-		for (int y = 0; y < height; y++)
-		{
-			memcpy(pDstBits + (y * pitch), pSrcBits + (y * pitch), width * bytesPerPixel);
+		if (pitch < 0) {
+			BYTE* pSrcStart = pSrcBits + (pitch * (height - 1));
+			BYTE* pDstStart = pDstBits + (pitch * (height - 1));
+			memcpy(pDstStart, pSrcStart, totalBytes);
+		}
+		else {
+			memcpy(pDstBits, pSrcBits, totalBytes);
 		}
 
 		Invalidate(FALSE);

@@ -16,7 +16,7 @@ public:
 
 // Dialog Data
 #ifdef AFX_DESIGN_TIME
-	enum { IDD = ID_POINTPROCESS_BITPLANE };
+	enum { IDD = IDD_DIALOG_BITPLANE };
 #endif
 
 protected:
