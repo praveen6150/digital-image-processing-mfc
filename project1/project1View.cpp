@@ -59,6 +59,7 @@
 #include "CLiftGammaGainDlg.h"
 #include "CColorPopDlg.h"
 #include "CBleachBypassDlg.h"
+#include "CClarityDlg.h"
 
 IMPLEMENT_DYNCREATE(Cproject1View, CScrollView)
 
@@ -152,6 +153,7 @@ BEGIN_MESSAGE_MAP(Cproject1View, CScrollView)
 	ON_COMMAND(ID_POINTPROCESS_LIFTGAMMAGAIN, &Cproject1View::OnPointprocessLiftgammagain)
 	ON_COMMAND(ID_POINTPROCESS_COLORPOP, &Cproject1View::OnPointprocessColorpop)
 	ON_COMMAND(ID_POINTPROCESS_BLEACHBYPASS, &Cproject1View::OnPointprocessBleachbypass)
+	ON_COMMAND(ID_SPATIALDOMAINFILTERING_CLARITY, &Cproject1View::OnSpatialdomainfilteringClarity)
 END_MESSAGE_MAP()
 
 
@@ -8239,6 +8241,165 @@ void Cproject1View::OnPointprocessBleachbypass()
 	}
 	else {
 		memcpy(pDstBits, pSrcBits, totalBytes);
+	}
+
+	Invalidate(FALSE);
+	UpdateWindow();
+}
+
+// Fast separable box blur using a sliding-window sum — O(width*height) regardless of radius
+void Cproject1View::BoxBlurLuminance(float* lumData, int width, int height, int radius)
+{
+	std::vector<float> temp(width * height);
+
+	// --- Horizontal pass ---
+	for (int y = 0; y < height; y++)
+	{
+		float sum = 0.0f;
+		int count = 0;
+		float* row = lumData + (y * width);
+		float* outRow = temp.data() + (y * width);
+
+		for (int x = -radius; x <= radius; x++)
+		{
+			int cx = max(0, min(width - 1, x));
+			sum += row[cx];
+			count++;
+		}
+		outRow[0] = sum / count;
+
+		for (int x = 1; x < width; x++)
+		{
+			int addX = min(width - 1, x + radius);
+			int subX = max(0, x - radius - 1);
+			sum += row[addX] - row[subX];
+			outRow[x] = sum / (2 * radius + 1);
+		}
+	}
+
+	// --- Vertical pass (reads temp, writes back into lumData) ---
+	std::vector<float> colBuf(height);
+	for (int x = 0; x < width; x++)
+	{
+		for (int y = 0; y < height; y++)
+			colBuf[y] = temp[y * width + x];
+
+		float sum = 0.0f;
+		int count = 0;
+		for (int y = -radius; y <= radius; y++)
+		{
+			int cy = max(0, min(height - 1, y));
+			sum += colBuf[cy];
+			count++;
+		}
+		lumData[x] = sum / count;
+
+		for (int y = 1; y < height; y++)
+		{
+			int addY = min(height - 1, y + radius);
+			int subY = max(0, y - radius - 1);
+			sum += colBuf[addY] - colBuf[subY];
+			lumData[y * width + x] = sum / (2 * radius + 1);
+		}
+	}
+}
+
+void Cproject1View::ApplyLiveClarity(int amount)
+{
+	Cproject1Doc* pDoc = GetDocument();
+	if (!pDoc || pDoc->m_image.IsNull() || pDoc->m_imageOriginal.IsNull()) return;
+
+	// Restore pristine original first
+	int pitch = pDoc->m_imageOriginal.GetPitch();
+	int height = pDoc->m_imageOriginal.GetHeight();
+	BYTE* pSrcBits = (BYTE*)pDoc->m_imageOriginal.GetBits();
+	BYTE* pDstBits = (BYTE*)pDoc->m_image.GetBits();
+
+	if (pitch < 0) {
+		memcpy(pDstBits + (pitch * (height - 1)), pSrcBits + (pitch * (height - 1)), abs(pitch) * height);
+	}
+	else {
+		memcpy(pDstBits, pSrcBits, pitch * height);
+	}
+
+	int width = pDoc->m_image.GetWidth();
+	int bpp = pDoc->m_image.GetBPP();
+	if (bpp < 24) return;
+
+	int bytesPerPixel = bpp / 8;
+	int dstPitch = pDoc->m_image.GetPitch();
+	BYTE* pBits = (BYTE*)pDoc->m_image.GetBits();
+
+	// --- Step 1: extract luminance into a float buffer ---
+	std::vector<float> luminance(width * height);
+	for (int y = 0; y < height; y++)
+	{
+		BYTE* pRow = pBits + (y * dstPitch);
+		for (int x = 0; x < width; x++)
+		{
+			BYTE* pPixel = pRow + (x * bytesPerPixel);
+			luminance[y * width + x] = 0.299f * pPixel[2] + 0.587f * pPixel[1] + 0.114f * pPixel[0];
+		}
+	}
+
+	// --- Step 2: blur a COPY of luminance ---
+	std::vector<float> blurred = luminance;
+	int radius = max(4, min(width, height) / 40);
+	BoxBlurLuminance(blurred.data(), width, height, radius);
+
+	double strength = amount / 100.0;   // -1.0 to 1.0
+	const double MAX_BOOST = 1.6;       // multiplier controlling how strong the effect gets at +/-100
+
+	for (int y = 0; y < height; y++)
+	{
+		BYTE* pRow = pBits + (y * dstPitch);
+		for (int x = 0; x < width; x++)
+		{
+			BYTE* pPixel = pRow + (x * bytesPerPixel);
+			int idx = y * width + x;
+
+			float origLum = luminance[idx];
+			float blurLum = blurred[idx];
+			float localContrast = origLum - blurLum;
+
+			// --- Additive boost, symmetric in both directions ---
+			float boost = (float)(localContrast * strength * MAX_BOOST);
+
+			int newB = (int)(pPixel[0] + boost + 0.5f);
+			int newG = (int)(pPixel[1] + boost + 0.5f);
+			int newR = (int)(pPixel[2] + boost + 0.5f);
+
+			pPixel[0] = (BYTE)max(0, min(255, newB));
+			pPixel[1] = (BYTE)max(0, min(255, newG));
+			pPixel[2] = (BYTE)max(0, min(255, newR));
+		}
+	}
+
+	Invalidate(FALSE);
+	UpdateWindow();
+}
+
+void Cproject1View::OnSpatialdomainfilteringClarity()
+{
+	Cproject1Doc* pDoc = GetDocument();
+	if (!pDoc || pDoc->m_imageOriginal.IsNull() || pDoc->m_image.IsNull()) return;
+
+	CClarityDlg dlg;
+	dlg.SetTargetView(this);
+
+	if (dlg.DoModal() != IDOK)
+		return; // OnCancel already reverted m_image
+
+	int pitch = pDoc->m_image.GetPitch();
+	int height = pDoc->m_image.GetHeight();
+	BYTE* pSrcBits = (BYTE*)pDoc->m_image.GetBits();
+	BYTE* pDstBits = (BYTE*)pDoc->m_imageOriginal.GetBits();
+
+	if (pitch < 0) {
+		memcpy(pDstBits + (pitch * (height - 1)), pSrcBits + (pitch * (height - 1)), abs(pitch) * height);
+	}
+	else {
+		memcpy(pDstBits, pSrcBits, pitch * height);
 	}
 
 	Invalidate(FALSE);

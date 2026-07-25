@@ -17,7 +17,6 @@
 #define new DEBUG_NEW
 #endif
 
-
 // Cproject1App
 
 BEGIN_MESSAGE_MAP(Cproject1App, CWinApp)
@@ -28,7 +27,6 @@ BEGIN_MESSAGE_MAP(Cproject1App, CWinApp)
 	// Standard print setup command
 	ON_COMMAND(ID_FILE_PRINT_SETUP, &CWinApp::OnFilePrintSetup)
 END_MESSAGE_MAP()
-
 
 // Cproject1App construction
 
@@ -56,7 +54,6 @@ Cproject1App::Cproject1App() noexcept
 
 Cproject1App theApp;
 
-
 // Cproject1App initialization
 
 BOOL Cproject1App::InitInstance()
@@ -77,7 +74,6 @@ BOOL Cproject1App::InitInstance()
 
 	CWinApp::InitInstance();
 
-
 	// Initialize OLE libraries
 	if (!AfxOleInit())
 	{
@@ -86,12 +82,10 @@ BOOL Cproject1App::InitInstance()
 	}
 
 	AfxEnableControlContainer();
-
 	EnableTaskbarInteraction(FALSE);
 
 	// AfxInitRichEdit2() is required to use RichEdit control
 	// AfxInitRichEdit2();
-
 	// Standard initialization
 	// If you are not using these features and wish to reduce the size
 	// of your final executable, you should remove from the following
@@ -101,7 +95,6 @@ BOOL Cproject1App::InitInstance()
 	// such as the name of your company or organization
 	SetRegistryKey(_T("Local AppWizard-Generated Applications"));
 	LoadStdProfileSettings(4);  // Load standard INI file options (including MRU)
-
 
 	// Register the application's document templates.  Document templates
 	//  serve as the connection between documents, frame windows and views
@@ -123,13 +116,11 @@ BOOL Cproject1App::InitInstance()
 	}
 	m_pMainWnd = pMainFrame;
 
-
 	// Parse command line for standard shell commands, DDE, file open
 	CCommandLineInfo cmdInfo;
 	ParseCommandLine(cmdInfo);
 	// Prevent the default blank MDI child window from opening on startup
 	cmdInfo.m_nShellCommand = CCommandLineInfo::FileNothing;
-
 
 	// Dispatch commands specified on the command line.  Will return FALSE if
 	// app was launched with /RegServer, /Register, /Unregserver or /Unregister.
@@ -154,7 +145,6 @@ int Cproject1App::ExitInstance()
 
 // Cproject1App message handlers
 
-
 // CAboutDlg dialog used for App About
 
 class CAboutDlg : public CDialogEx
@@ -162,7 +152,7 @@ class CAboutDlg : public CDialogEx
 public:
 	CAboutDlg() noexcept;
 
-// Dialog Data
+	// Dialog Data
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_ABOUTBOX };
 #endif
@@ -170,13 +160,9 @@ public:
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 
-// Implementation
+	// Implementation
 protected:
 	DECLARE_MESSAGE_MAP()
-public:
-	afx_msg void OnPointInvertcolors();
-	afx_msg void OnPointprocessInverselogtransformation();
-	afx_msg void OnPointprocessOtsuthreshold();
 };
 
 CAboutDlg::CAboutDlg() noexcept : CDialogEx(IDD_ABOUTBOX)
@@ -189,9 +175,6 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)
-	//ON_COMMAND(ID_POINT_INVERTCOLORS, &CAboutDlg::OnPointInvertcolors)
-	//ON_COMMAND(ID_INTENSITYANDMAPPINGTRANSFORMATION_INVERSELOGTRANSFORMATION, &CAboutDlg::OnPointprocessInverselogtransformation)
-	ON_COMMAND(ID_POINTPROCESS_OTSUTHRESHOLD, &CAboutDlg::OnPointprocessOtsuthreshold)
 END_MESSAGE_MAP()
 
 // App command to run the dialog
@@ -199,11 +182,4 @@ void Cproject1App::OnAppAbout()
 {
 	CAboutDlg aboutDlg;
 	aboutDlg.DoModal();
-}
-
-// Cproject1App message handlers
-
-void CAboutDlg::OnPointprocessOtsuthreshold()
-{
-	// TODO: Add your command handler code here
 }

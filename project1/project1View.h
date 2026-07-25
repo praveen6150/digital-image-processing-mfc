@@ -95,7 +95,7 @@ protected:
 	void RotateImageArbitrary(CImage& img, double angleDegrees);
 	int ComputeOtsuThreshold(const std::vector<int>& histogram, int totalPixels);
 	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
-
+	afx_msg void BoxBlurLuminance(float* lumData, int width, int height, int radius);
 protected:
 	//afx_msg void OnColorsHsvadjustment();
 	DECLARE_MESSAGE_MAP()
@@ -231,8 +231,9 @@ public:
 	afx_msg void OnPointprocessColorpop();
 	afx_msg void ApplyLiveBleachBypass(int intensityPercent);
 	afx_msg void ApplyLiveColorPop(COLORREF targetColor, int hueTolerance);
-
 	afx_msg void OnPointprocessBleachbypass();
+	afx_msg void ApplyLiveClarity(int amount);
+	afx_msg void OnSpatialdomainfilteringClarity();
 };
 
 #ifndef _DEBUG  // debug version in project1View.cpp

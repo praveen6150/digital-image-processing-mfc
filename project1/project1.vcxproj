@@ -204,6 +204,7 @@
     <ClInclude Include="CBleachBypassDlg.h" />
     <ClInclude Include="CBrightnessContrastDlg.h" />
     <ClInclude Include="CChannelIsolationDlg.h" />
+    <ClInclude Include="CClarityDlg.h" />
     <ClInclude Include="CCmykDlg.h" />
     <ClInclude Include="CColorBalanceDlg.h" />
     <ClInclude Include="CColorizeDlg.h" />
@@ -256,6 +257,7 @@
     <ClCompile Include="CBleachBypassDlg.cpp" />
     <ClCompile Include="CBrightnessContrastDlg.cpp" />
     <ClCompile Include="CChannelIsolationDlg.cpp" />
+    <ClCompile Include="CClarityDlg.cpp" />
     <ClCompile Include="CCmykDlg.cpp" />
     <ClCompile Include="CColorBalanceDlg.cpp" />
     <ClCompile Include="CColorizeDlg.cpp" />
