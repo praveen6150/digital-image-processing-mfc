@@ -11,6 +11,7 @@
 class CHistogramDlg;
 class CColorReplaceDlg;
 class CColorPopDlg;
+class CChannelMixerDlg;
 
 class Cproject1View : public CScrollView
 {
@@ -236,6 +237,8 @@ public:
 	afx_msg void OnSpatialdomainfilteringClarity();
 	afx_msg void ApplyLiveSplitTone(COLORREF shadowTint, COLORREF highlightTint, int balance, int intensityPercent);
 	afx_msg void OnPointprocessSplittone();
+	afx_msg void ApplyLiveChannelMixer(int redWeight, int greenWeight, int blueWeight);
+	afx_msg void OnPointprocessChannelmixerbw();
 };
 
 #ifndef _DEBUG  // debug version in project1View.cpp

@@ -219,6 +219,7 @@
     <ClInclude Include="CGammaDlg.h" />
     <ClInclude Include="CGaussianNoiseDlg.h" />
     <ClInclude Include="CGraySlicingDlg.h" />
+    <ClInclude Include="ChannelMixerDlg.h" />
     <ClInclude Include="ChildFrm.h" />
     <ClInclude Include="CHistogramDlg.h" />
     <ClInclude Include="CHsiDlg.h" />
@@ -273,6 +274,7 @@
     <ClCompile Include="CGammaDlg.cpp" />
     <ClCompile Include="CGaussianNoiseDlg.cpp" />
     <ClCompile Include="CGraySlicingDlg.cpp" />
+    <ClCompile Include="ChannelMixerDlg.cpp" />
     <ClCompile Include="ChildFrm.cpp" />
     <ClCompile Include="CHistogramDlg.cpp" />
     <ClCompile Include="CHsiDlg.cpp" />

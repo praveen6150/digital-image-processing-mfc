@@ -61,7 +61,7 @@
 #include "CBleachBypassDlg.h"
 #include "CClarityDlg.h"
 #include "CSplitToneDlg.h"
-
+#include "ChannelMixerDlg.h"
 
 IMPLEMENT_DYNCREATE(Cproject1View, CScrollView)
 
@@ -157,6 +157,7 @@ BEGIN_MESSAGE_MAP(Cproject1View, CScrollView)
 	ON_COMMAND(ID_POINTPROCESS_BLEACHBYPASS, &Cproject1View::OnPointprocessBleachbypass)
 	ON_COMMAND(ID_SPATIALDOMAINFILTERING_CLARITY, &Cproject1View::OnSpatialdomainfilteringClarity)
 	ON_COMMAND(ID_POINTPROCESS_SPLITTONE, &Cproject1View::OnPointprocessSplittone)
+	ON_COMMAND(ID_POINTPROCESS_CHANNELMIXERBW, &Cproject1View::OnPointprocessChannelmixerbw)
 END_MESSAGE_MAP()
 
 
@@ -8483,6 +8484,88 @@ void Cproject1View::OnPointprocessSplittone()
 	if (!pDoc || pDoc->m_imageOriginal.IsNull() || pDoc->m_image.IsNull()) return;
 
 	CSplitToneDlg dlg;
+	dlg.SetTargetView(this);
+
+	if (dlg.DoModal() != IDOK)
+		return; // OnCancel already reverted m_image
+
+	int pitch = pDoc->m_image.GetPitch();
+	int height = pDoc->m_image.GetHeight();
+	BYTE* pSrcBits = (BYTE*)pDoc->m_image.GetBits();
+	BYTE* pDstBits = (BYTE*)pDoc->m_imageOriginal.GetBits();
+
+	if (pitch < 0) {
+		memcpy(pDstBits + (pitch * (height - 1)), pSrcBits + (pitch * (height - 1)), abs(pitch) * height);
+	}
+	else {
+		memcpy(pDstBits, pSrcBits, pitch * height);
+	}
+
+	Invalidate(FALSE);
+	UpdateWindow();
+}
+
+void Cproject1View::ApplyLiveChannelMixer(int redWeight, int greenWeight, int blueWeight)
+{
+	Cproject1Doc* pDoc = GetDocument();
+	if (!pDoc || pDoc->m_image.IsNull() || pDoc->m_imageOriginal.IsNull()) return;
+
+	// Restore pristine original first
+	int pitch = pDoc->m_imageOriginal.GetPitch();
+	int height = pDoc->m_imageOriginal.GetHeight();
+	BYTE* pSrcBits = (BYTE*)pDoc->m_imageOriginal.GetBits();
+	BYTE* pDstBits = (BYTE*)pDoc->m_image.GetBits();
+
+	if (pitch < 0) {
+		memcpy(pDstBits + (pitch * (height - 1)), pSrcBits + (pitch * (height - 1)), abs(pitch) * height);
+	}
+	else {
+		memcpy(pDstBits, pSrcBits, pitch * height);
+	}
+
+	int width = pDoc->m_image.GetWidth();
+	int bpp = pDoc->m_image.GetBPP();
+	if (bpp < 24) return;
+
+	int bytesPerPixel = bpp / 8;
+	int dstPitch = pDoc->m_image.GetPitch();
+	BYTE* pBits = (BYTE*)pDoc->m_image.GetBits();
+
+	double wR = redWeight / 100.0;
+	double wG = greenWeight / 100.0;
+	double wB = blueWeight / 100.0;
+
+	for (int y = 0; y < height; y++)
+	{
+		BYTE* pRow = pBits + (y * dstPitch);
+		for (int x = 0; x < width; x++)
+		{
+			BYTE* pPixel = pRow + (x * bytesPerPixel);
+
+			BYTE b = pPixel[0], g = pPixel[1], r = pPixel[2];
+
+			// Weighted sum, NOT required to normalize to 100 -- over/under-driving
+			// individual channels is what gives the filter-glass look
+			double gray = r * wR + g * wG + b * wB;
+			BYTE grayByte = (BYTE)max(0.0, min(255.0, gray + 0.5));
+
+			pPixel[0] = grayByte;
+			pPixel[1] = grayByte;
+			pPixel[2] = grayByte;
+		}
+	}
+
+	Invalidate(FALSE);
+	UpdateWindow();
+}
+
+
+void Cproject1View::OnPointprocessChannelmixerbw()
+{
+	Cproject1Doc* pDoc = GetDocument();
+	if (!pDoc || pDoc->m_imageOriginal.IsNull() || pDoc->m_image.IsNull()) return;
+
+	CChannelMixerDlg dlg;
 	dlg.SetTargetView(this);
 
 	if (dlg.DoModal() != IDOK)
